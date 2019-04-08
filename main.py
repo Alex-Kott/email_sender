@@ -1,5 +1,7 @@
+import logging
 import smtplib
 import sys
+import time
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -8,8 +10,10 @@ from pathlib import Path
 from tkinter import Tk, Label, mainloop, Entry, Text, Button, filedialog, END, INSERT, Frame
 from typing import List, Tuple, Union, Dict
 
+from peewee import fn, DoesNotExist
+
 from config import EMAIL_FILE, EMAIL_TEXT_FILE, EMAIL_LOGIN, EMAIL_PASSWORD
-from models import Address, Email
+from models import Address, Email, Launch
 
 
 def get_emails() -> List[str]:
@@ -50,21 +54,31 @@ def send_email(email: str, subject: str = '', text: str = '', attachments: List[
     text = msg.as_string()
     try:
         server.sendmail(EMAIL_LOGIN, email, text)
-        server.quit()
-    except:
-        print("Mail send error")
+    except smtplib.SMTPRecipientsRefused as e:
+        logger.debug(e)
+    finally:
         server.quit()
 
 
-def run_mailing():
-    emails = get_emails()
-    subject, text = get_email_text()
+def save_email(subject, text):
+    email = Email.create(subject=subject, text=text)
+    # launch = Launch.create(email=email)
+
+
+def run_mailing(subject_field: Entry, text_field: Text, addresses_field: Text):
+    save_email_addresses(addresses_field)
+    subject = subject_field.get()
+    text = text_field.get(1.0, END)
+    save_email(subject_field.get(), text_field.get(1.0, END))
 
     addresses = Address.select()
     for address in addresses:
+        logger.info(f'Sending: {address.email}')
         send_email(email=address.email,
                    subject=subject,
                    text=text)
+
+        time.sleep(1)
 
 
 def init_db():
@@ -95,6 +109,7 @@ def load_email_addresses_from_file(field: Text):
     Address.insert_many(address_records).execute()
 
     load_addresses_to_field(field)
+    save_email_addresses(field)
 
 
 def save_email_addresses(addresses_field: Text):
@@ -107,19 +122,28 @@ def save_email_addresses(addresses_field: Text):
     Address.insert_many(addresses).execute()
 
 
+def init_email_text(subject_field: Entry, text_field: Text):
+    try:
+        email = Email.select().order_by(Email._datetime.desc()).get()
+
+        subject_field.insert(0, email.subject)
+        text_field.insert(1.0, email.text)
+    except DoesNotExist:
+        pass
+
+
 def main():
     init_db()
 
-    percent_width = '30'
-    percent_height = '20'
+    percent_width = 70
+    percent_height = 60
 
     root = Tk()
     root.title = 'Email sender'
-    root.geometry('30x30')
-    print(root.winfo_screenheight())
     width_pixels_to_percent = round(root.winfo_screenwidth() / 100)
     height_pixels_to_percent = round(root.winfo_screenheight() / 100)
-    root.geometry(f"{width_pixels_to_percent * percent_width}x{height_pixels_to_percent*percent_height}")
+    screen_size = f"{width_pixels_to_percent * percent_width}x{height_pixels_to_percent*percent_height}"
+    # root.geometry(screen_size)
 
     Label(root, text='Letter subject', font=('Helvetica', 14)).grid(row=0)
     Label(root, text='Letter text', font=('Helvetica', 14)).grid(row=1)
@@ -133,6 +157,8 @@ def main():
     text_field.grid(row=1, column=1)
     text_field.config(font=('Helvetica', 11))
 
+    init_email_text(subject_field, text_field)
+
     addresses_field = Text(root, width=60, height=20)
     addresses_field.grid(row=2, column=1)
     addresses_field.config(font=('Helvetica', 11))
@@ -141,17 +167,23 @@ def main():
     buttons_frame = Frame(root)
     buttons_frame.grid(row=2, column=2, sticky="nsew")
 
-    save_addresses_button = Button(buttons_frame, text='Save email addresses',
-                                   command=lambda: save_email_addresses(addresses_field))
-    save_addresses_button.grid(row=0, column=0, sticky="nsew")
-    save_addresses_button.config(font=('Helvetica', 10), width=30, height=3)
+    # save_addresses_button = Button(buttons_frame, text='Save email addresses',
+    #                                command=lambda: save_email_addresses(addresses_field))
+    # save_addresses_button.grid(row=0, column=0, sticky="nsew")
+    # save_addresses_button.config(font=('Helvetica', 10), width=30, height=3)
 
-    load_addresses_from_file_button = Button(buttons_frame, text='Load email addresses from file',
+    load_addresses_from_file_button = Button(buttons_frame, text="Добавить email'ы из файла",
                                              command=lambda: load_email_addresses_from_file(addresses_field))
     load_addresses_from_file_button.grid(row=1, column=0, sticky="nsew")
     load_addresses_from_file_button.config(font=('Helvetica', 10), width=30, height=3)
 
-    run_mailing_button = Button(root, text='Run mailing', command=lambda: run_mailing())
+    # status_field = Text(root, width=60)
+    # status_field.grid(row=3, column=1)
+    # status_field.config(font=('Helvetica', 11), width=60, height=3)
+
+    run_mailing_button = Button(root, text='Run mailing', command=lambda: run_mailing(subject_field,
+                                                                                      text_field,
+                                                                                      addresses_field))
     run_mailing_button.grid(row=3, column=1)
     run_mailing_button.config(font=('Helvetica', 10), width=60, height=3)
 
@@ -159,4 +191,9 @@ def main():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                        datefmt='%m-%d %H:%M',
+                        filename='info.log')
+    logger = logging.getLogger()
     main()

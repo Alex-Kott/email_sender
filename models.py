@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from peewee import Model, SqliteDatabase, TextField, DateTimeField
+from peewee import Model, SqliteDatabase, TextField, DateTimeField, ForeignKeyField, DateField
 
 db = SqliteDatabase('db.sqlite3')
 # db = PostgresqlDatabase()
@@ -19,4 +19,12 @@ class Address(BaseModel):
 class Email(BaseModel):
     subject = TextField()
     text = TextField()
+    _datetime = DateTimeField(default=datetime.now)
+    _date = DateField(default=datetime.now().date)
+
+
+class Launch(BaseModel):
+    email = ForeignKeyField(Email, backref='launches')
+    _datetime = DateTimeField(default=datetime.now)
+
 

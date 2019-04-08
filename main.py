@@ -12,7 +12,7 @@ from typing import List, Tuple, Union, Dict
 
 from peewee import fn, DoesNotExist
 
-from config import EMAIL_FILE, EMAIL_TEXT_FILE, EMAIL_LOGIN, EMAIL_PASSWORD
+from config import EMAIL_LOGIN, EMAIL_PASSWORD
 from models import Address, Email, Launch
 
 

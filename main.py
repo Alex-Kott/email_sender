@@ -110,9 +110,16 @@ def save_email_addresses(addresses_field: Text):
 def main():
     init_db()
 
+    percent_width = '30'
+    percent_height = '20'
+
     root = Tk()
     root.title = 'Email sender'
-    root.geometry('2200x1400')
+    root.geometry('30x30')
+    print(root.winfo_screenheight())
+    width_pixels_to_percent = round(root.winfo_screenwidth() / 100)
+    height_pixels_to_percent = round(root.winfo_screenheight() / 100)
+    root.geometry(f"{width_pixels_to_percent * percent_width}x{height_pixels_to_percent*percent_height}")
 
     Label(root, text='Letter subject', font=('Helvetica', 14)).grid(row=0)
     Label(root, text='Letter text', font=('Helvetica', 14)).grid(row=1)

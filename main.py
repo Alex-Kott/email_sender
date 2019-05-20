@@ -1,33 +1,24 @@
 import logging
 import smtplib
-import sys
 import time
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from os.path import basename
-from pathlib import Path
 from tkinter import Tk, Label, mainloop, Entry, Text, Button, filedialog, END, INSERT, Frame
-from typing import List, Tuple, Union, Dict
+from typing import List, Dict
 
-from peewee import fn, DoesNotExist
+from peewee import DoesNotExist
 
-from config import EMAIL_LOGIN, EMAIL_PASSWORD
+# from config import EMAIL_LOGIN, EMAIL_PASSWORD
 from models import Address, Email, Launch
 
 
-def get_emails() -> List[str]:
-    with open(EMAIL_FILE) as file:
-        return file.readlines()
+def get_credentials():
+    with open('config.txt') as file:
+        login, password = file.read().split(':')
 
-
-def get_email_text() -> Tuple[str, str]:
-    """First line in EMAIL_TEXT_FILE is subject, second line is empty, email text are further"""
-    with open(EMAIL_TEXT_FILE) as file:
-        subject = file.readline()
-        file.readline()
-
-        return subject, file.read()
+        return login, password
 
 
 def send_email(email: str, subject: str = '', text: str = '', attachments: List[str] = ()) -> None:
@@ -102,9 +93,9 @@ def load_addresses_to_field(field: Text):
 
 
 def load_email_addresses_from_file(field: Text):
-    field.delete(1.0, END)
     address_records = prepare_email_addresses()
     Address.delete().where(True).execute()
+    field.delete(1.0, END)
 
     Address.insert_many(address_records).execute()
 
@@ -196,4 +187,5 @@ if __name__ == "__main__":
                         datefmt='%m-%d %H:%M',
                         filename='info.log')
     logger = logging.getLogger()
+    EMAIL_LOGIN, EMAIL_PASSWORD = get_credentials()
     main()

@@ -15,10 +15,15 @@ from models import Address, Email, Launch
 
 
 def get_credentials():
-    with open('config.txt') as file:
-        login, password = file.read().split(':')
+    try:
+        with open('config.txt') as file:
+            login, password = file.read().split(':')
 
         return login, password
+    except FileNotFoundError:
+        logger.debug('Файл с логином и паролем не найден')
+        logger.info('test')
+        exit()
 
 
 def send_email(email: str, subject: str = '', text: str = '', attachments: List[str] = ()) -> None:
@@ -44,7 +49,9 @@ def send_email(email: str, subject: str = '', text: str = '', attachments: List[
     server.login(EMAIL_LOGIN, EMAIL_PASSWORD)
     text = msg.as_string()
     try:
-        server.sendmail(EMAIL_LOGIN, email, text)
+        response = server.sendmail(EMAIL_LOGIN, email, text)
+        if len(response) > 0:
+            logger.info(response.__dict__)
     except smtplib.SMTPRecipientsRefused as e:
         logger.debug(e)
     finally:
@@ -155,6 +162,10 @@ def main():
     addresses_field.config(font=('Helvetica', 11))
     load_addresses_to_field(addresses_field)
 
+    # log_field = Text(root, width=60, height=3)
+    # log_field.grid(row=3, column=1)
+    # log_field.config(font=('Helvetica', 11))
+
     buttons_frame = Frame(root)
     buttons_frame.grid(row=2, column=2, sticky="nsew")
 
@@ -182,7 +193,7 @@ def main():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO,
+    logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                         datefmt='%m-%d %H:%M',
                         filename='info.log')
